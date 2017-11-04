@@ -1,0 +1,33 @@
+#!/usr/bin/env ansible-playbook
+---
+
+- name: Yell at FPF members regarding TOR package status
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Form tor_versions dictionary
+      set_fact:
+        tor_versions:
+          - value: "{{ lookup('file', tor_version_files+'app'+ci_env) }}"
+            title: app version
+            short: True
+          - value: "{{ lookup('file', tor_version_files+'mon'+ci_env) }}"
+            title: mon version
+            short: True
+
+    - name: Blast slack info
+      slack:
+        token: "{{ lookup('env', 'CI_SLACK_TOKEN') }}"
+        channel: "{{ lookup('env', 'CI_SLACK_CHANNEL') }}"
+        icon_url: "https://check.torproject.org/torcheck/img/tor-on.png"
+        username: "Jenkins"
+        attachments:
+          - title: CI {{'PASSED' if ci_pass else 'FAILED'}} for Tor nightly
+            color: "{{ 'good' if ci_pass else 'danger' }}"
+            text: "Build URL {{ lookup('env', 'BUILD_URL') }}"
+            fields: "{{ tor_versions }}"
+
+  vars:
+    tor_version_files: "{{ playbook_dir }}/.molecule/tor_versions/"
+    ci_env: "-{{ lookup('env', 'CI_SD_ENV') }}"
+    ci_pass: "{{ lookup('env', 'CI_BUILD_RESULT')|bool }}"

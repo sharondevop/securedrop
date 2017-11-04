@@ -1,0 +1,23 @@
+#!/usr/bin/env ansible-playbook
+- name: Gather tor version and spit out results
+  hosts: securedrop
+  gather_facts: "yes"
+  tasks:
+    - name: extract tor version
+      shell: |
+        apt-cache policy tor | sed -e 's/^\s*Installed:\ \(\S*\)/\1/g;tx;d;:x'
+      changed_when: false
+      register: extract_tor_version
+
+    - name: create directory for dumping versions
+      file:
+        state: directory
+        path: "{{ playbook_dir }}/.molecule/tor_versions"
+      run_once: True
+      delegate_to: localhost
+
+    - name: dump tor versions to file for later usage
+      copy:
+        dest: "{{ playbook_dir }}/.molecule/tor_versions/{{ansible_hostname}}"
+        content: "{{ extract_tor_version.stdout }}"
+      delegate_to: localhost
